@@ -1,9 +1,9 @@
-# MATH261A-project-template
-Example project repository for MATH 261A.
+# MATH261A Project V1
+Project repository for MATH 261A (version 1).
 
 ## Data 
 
-**Example statement:** Data used in this project is obtained from [San Francisco Open Data](https://data.sfgov.org) who provide the data under the [Open Data Commons Public Domain Dedication and License](https://opendatacommons.org/licenses/pddl/1-0/).
+Data used in this project is obtained from [SCORE Sports Data Repository](https://data.scorenetwork.org/golf/pga_drive_putt.html). According to SCORE, the data were originally sourced from the [PGA Tour statistics website](https://www.pgatour.com/stats). The license terms for this data were not explicitly provided by SCORE or the original PGA source. This data is used here for academic and educational purposes under the principles of fair use.
 
 ## External Resources
 
@@ -14,4 +14,4 @@ Example project repository for MATH 261A.
 
 # Acknowledgments
 
-This project repository is based on the template provided by [Rohan Alexander](https://github.com/RohanAlexander/starter_folder/tree/main).
+This project repository is based on the template provided by [Peter Gao](https://github.com/peteragao/MATH261A-project-template).
