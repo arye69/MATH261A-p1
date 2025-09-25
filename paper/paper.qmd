@@ -5,28 +5,19 @@ author: "Arye Santosh"
 thanks: "Project repository available at: [https://github.com/arye69/MATH261A-p1](https://github.com/arye69/MATH261A-p1)."
 date: today
 date-format: long
-abstract: "Abstract here."
+abstract: "This paper uses simple linear regression to test whether driving or putting is a stronger linear predictor of scoring average on the PGA Tour. Using aggregated 2022 player data, scoring average is modeled as a function of average strokes gained off-the-tee and average strokes gained putting. The analysis reveals that while both predictors have a statistically significant negative relationship with scoring average, the model with putting performance has a higher R-squared than driving performance and explains more of the variability. From the data and analysis, it can be concluded that putting performance is a stronger linear predictor of average score for professional golfers."
 format: pdf
 bibliography: references.bib
 ---
 
 ```{r}
 #| include: false
-#| warning: false
-#| message: false
-
-library(tidyverse)
-library(palmerpenguins)
-```
-
-
-```{r}
-#| include: false
 
 library(here)
-library(dplyr)
 library(kableExtra)
 library(tidyverse)
+library(stargazer)
+library(gridExtra)
 PGA2022 <- read.csv(here("data", "PGA2022.csv"))
 ```
 
@@ -44,11 +35,11 @@ The remainder of the paper is structured as follows. The **Data** section goes o
 
 # Data
 
-The data for this analysis was obtained from the [SCORE Sports Data Repository](https://data.scorenetwork.org/golf/pga_drive_putt.html) which sourced its data from the official [PGA Tour stats](https://www.pgatour.com/stats) website after the 2022 tournament season.
+The data for this analysis was obtained from the [SCORE Sports Data Repository](https://data.scorenetwork.org/golf/pga_drive_putt.html) which sourced its data from the official [PGA Tour stats](https://www.pgatour.com/stats) website after the 2022 tournament season [@PGA2022].
 
 The observational unit in the raw dataset (`PGA2022`) is a player-tournament combination. Each of the 1387 observations represents a single players' stats from a single tournament they played in. Each tournament consists of four rounds and it's possible for golfers to be eliminated after as few as two rounds. A caveat of the data collection process is that only players that made it *all four rounds* were taken as observations. This means that only the most skilled of all competing professional golfers were included in this data. The data covers 19 tournaments and 280 unique golfers in total.
 
-## Relevant variables
+### Relevant variables
 The following variables are relevant:
 
 * `avgScore` (Scoring average): The response variable denoting the average number of strokes a golfer used for a standard 18-hole. It's calculated as the total number of strokes for all holes divided by the total tournament rounds (usually four). Lower is better.
@@ -57,12 +48,12 @@ The following variables are relevant:
 
 * `driveSG` (Strokes gained driving): A predictor that measures how many strokes a golfer gains or loses compared to the PGA average off-the-tee on all par 4s and 5s. The metric is calculated exactly how `puttsSG` is and accounts for both distance and accuracy. Again, a positive value indicates better than average driving ability.
 
-## Data cleaning
-With over 1300 observations and only 280 unique golfers, it's clear that to measure any kind of linear relationship without introducing a false correlation effect, the data must be reduced down to a maximum of 280 observations, with only a single golfer per observation. To do this, the original dataframe was aggregated into only the averages of all pertinent metrics. The result is a dataframe with the new variables `avg_Score` (average score, response), `avg_puttsSG` (average strokes gained putting, predictor), and `avg_driveSG` (average strokes gained off-the-tee, predictor). All of these are simply averages of the original stats by player, which reduces the bias of treating each tournament as an independent event. 
+### Data cleaning
+With over 1300 observations and only 280 unique golfers, it's clear that to measure any kind of linear relationship without introducing a false correlation effect, the data must be reduced down to a maximum of 280 observations, with only a single golfer per observation. To do this, the original dataframe was aggregated into only the averages of all pertinent metrics using R [@Base_R]. The result is a dataframe with the new variables `avg_Score` (average score, response), `avg_puttsSG` (average strokes gained putting, predictor), and `avg_driveSG` (average strokes gained off-the-tee, predictor). All of these are simply averages of the original stats by player, which reduces the bias of treating each tournament as an independent event. 
 
 Two observations for players D.J. Trahan and David Hearn had empty stats in the original dataframe and were omitted from the cleaned data, resulting in a total 278 unique golfers with complete stats.
 
-Some useful summary statistics about the pertinent variables can be found below, in Table 1. 
+Some useful summary statistics about the pertinent variables can be found below, compiled in Table 1 using Kable [@kableExtra]. 
 
 
 
@@ -104,7 +95,7 @@ summary_stats |>
 
 ```
 
-Find a scatter plot of `avg_puttsSg` vs. `avg_Score` below.
+Find a scatter plot of `avg_puttsSg` vs. `avg_Score` below. All plots were created using ggplot2 [@ggplot2].
 
 ```{r}
 #| echo: false
@@ -154,7 +145,7 @@ print(plot_putting)
 
 The plots suggest that negative linear relationships might exist between both strokes gained metrics and scoring average, which aligns with the nature of the game: gaining strokes will likely improve scoring average. 
 
-## Limitations
+### Limitations
 
 A potential limitation of the data is measurement error. While the PGA Tour's [ShotLink](https://shotlink.com/) system is leagues ahead of what shot tracking used to be, it's still prone to factors like weather, shot variability, and equipment limitation. Additionally, the "Strokes Gained" metric is useful for measuring relative performance, but doesn't necessarily capture all aspects of how a golfer plays and relies heavily on the accuracy of the shot tracking equipment.
 
@@ -163,8 +154,195 @@ As stated earlier, the tournament independence biased was mitigated as best as p
 
 # Methods
 
+To model a linear relationship between `avg_Score` and each of the predictors (`avg_puttsSg` and `avg_driveSG`), a simple linear regression (SLR) model will be used, with the goal of determining which metric is a stronger linear predictor of average score. The two models used are as follows.
 
+**Model 1: Putting performance**
+
+$$\text{avg\_Score}=\beta_0+\beta_1(\text{avg\_puttsSG})+\varepsilon$$
+**Model 2: Driving performance**
+
+$$\text{avg\_Score}=\beta_0+\beta_1(\text{avg\_driveSG})+\varepsilon$$
+
+Where
+
+* `avg_Score` is the response variable, scoring average
+
+* `avg_puttsSG` and `avg_driveSG` are the predictors in the two separate models. These are the average strokes gained putting and average strokes gained off-the-tee, discussed in greater detail in the **Data** section.
+
+* $\beta_0$ is the intercept term for each model, representing the average score when each predictor is equal to 0. Note that although the term $\beta_0$ is used for both models, the numeric value for this parameter will likely be different across models. 
+
+* $\beta_1$ is the slope term for each model, representing the expected change in average score given a unit increase in each predictor. Again, note that while the term is used for both models, it's likely the value will not be the same across models.
+
+* $\varepsilon$ is the error term for each model, denoting the variation not captured by the model.
+
+### Variable selection and justification
+
+The response variable `avg_Score` was selected due to its straightforward measure of tournament success. There were other success metrics available including money and points, but certain tournaments offer different cash prizes and point levels, resulting in the need to standardize across tournaments in order to get meaningful results. For this reason, the average player score worked the best and yields meaningful results without many complications. Meanwhile, the predictor variables were the best choice since they're both Strokes Gained metrics. Primarily, both predictors being in terms of the same metric removed an element of bias across putting and driving analysis. Additionally, Strokes Gained is a tried and true metric within golf, further strengthening the use of the chosen predictors.
+
+With regards to the chosen method, SLR seemed like a viable choice after visually inspecting the plots (in the **Data** section). From a visual standpoint, there's enough evidence to say that the true relationship could possibly be linear.
+
+### Model Validation
+
+A SLR analysis assumes linearity, independence of observations, normality of residuals, and equal variances (homoscedasticity). These assumptions were verified using the following.
+
+* Examination of plots of both predictors during exploratory analysis (see **Data**)
+
+* Inspection of relevant diagnostic plots (residuals plots and QQ plots in **Results**)
+
+* Aggregation of player stats to ensure all provided data was encompassed while keeping players independent (see **Data**)
+
+The fit of both models was evaluated using the coefficient of determination $R^2$ and the predictor significance was evaluated using the inbuilt slope parameter t-tests in R with a significance level of $\alpha = 0.05$.
+
+### Software
+
+All statistical analysis was done in R [@Base_R]. The here package was used to import and load files [@here]. The lm() function in base R was utilized to fit the linear regression model and further diagnostic checks were generated from the same function output. Data manipulation and cleaning was performed using the Tidyverse package [@tidyverse]. All plots and visualizations were created using ggplot2 [@ggplot2] unless otherwise stated.
+
+### Limitations and extensions
+
+A critical limitation of the structure of the data in this analysis is that course/tournament-specific effects will not be accounted for, as well as the variability within players' performances. This is due to the aggregation and is discussed in greater detail in the **Data** section. 
+
+A logical extension to this work could be a multiple linear regression model using both `avg_puttsSG` and `avg_driveSG` as predictors. It's possible that using both predictors could improve average score prediction. Another extension could be seeing whether the same predictors could be manipulated to work at predicting either financial success or overall tournament points. Finally, if it seems that the models in fact are not linear after SLR models are fitted, nonlinear transformations of the response would also be a possible extension.
 
 # Results
+
+This section contains the results of the previously described analysis performed on each of the two proposed models. After analyzing both models, a comparison is performed to address the central research question.
+
+## Model 1: Putting performance and scoring average
+
+Fitting an SLR model between strokes gained putting and scoring average yields the following table created using Stargazer [@stargazer]:
+
+
+```{r}
+#| results: asis
+#| message: false
+#| echo: false
+
+regp <- lm(avg_Score ~ avg_puttsSG, data = pga_agg)
+sump <- summary(regp)
+
+stargazer(regp,
+          title = "Regression of scoring average on putting performance",
+          font.size = "footnotesize",
+          header = FALSE)
+
+```
+
+As can be seen from the table, the regression revealed a statistically significant negative relationship between putting performance and average score with a $b_1$ p-value of `r sump$coefficients[8]`. The fitted regression equation is
+
+$$\text{avg\_Score}=70.377 - 0.612(\text{avg\_puttsSG})$$
+
+The slope coefficient of -0.612 means that for every stroke gained against the PGA average on the green, a professional golfers scoring average is expected to decrease by 0.612 strokes. The $R^2$ value of the model is 0.154, which means that putting performance only accounted for about 15.4\% of the variation in average score. This translates to average strokes gained putting being a weak predictor of average score.
+
+Below is a plot of `avg_Score` vs. `avg_puttsSG` with a fitted regression line and 95\% confidence interval shading around it.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+plot_putting_fitted <- pga_agg |>
+  ggplot(aes(x = avg_puttsSG, y = avg_Score)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "darkred", fill = "lightpink", linewidth = 0.8) +
+  labs(
+    title = "Strokes Gained: Putting vs Scoring Average (fitted)",
+    x = "Strokes Gained Putting (Average)",
+    y = "Scoring Average",
+    caption = "Lower scoring average and higher strokes gained indicate better performance"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.title = element_text(size = 10),
+        plot.caption = element_text(size = 6))
+
+print(plot_putting_fitted)
+
+```
+
+## Model 2: Driving performance and scoring average
+
+The SLR model of scoring average on strokes gained off-the-tee produced the following output table:
+
+
+```{r}
+#| results: asis
+#| message: false
+#| echo: false
+
+regd <- lm(avg_Score ~ avg_driveSG, data = pga_agg)
+sumd <- summary(regd)
+
+stargazer(regd,
+          title = "Regression of scoring average on driving performance",
+          font.size = "footnotesize",
+          header = FALSE)
+```
+
+As expected, this regression also yielded a statistically signficant negative relationship between driving performance and scoring average. The p-value for the slope of this model is `r sumd$coefficients[8]` and the fitted regression equation is
+
+$$\text{avg\_Score}=70.269 - 0.696(\text{avg\_driveSG})$$
+
+Similar to the putting performance, the -0.696 slope coefficient denotes that for every one stroke increase in strokes gained over the PGA average, a professional golfer's average score is expected to decrease by 0.696 points. Despite the more extreme slope coefficient between average strokes gained off-the-tee and average score, the $R^2$ is even lower than that of the previous model, at 0.104. This means only 10.4\% of the variation in average score is explained by `avg_driveSG`, making it a weak predictor.
+
+Below is a plot of `avg_Score` vs. `avg_puttsSG` with a fitted regression line and 95\% confidence interval shading.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+plot_driving_fitted <- pga_agg |>
+  ggplot(aes(x = avg_driveSG, y = avg_Score)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "darkred", fill = "lightpink", linewidth = 0.8) +
+  labs(
+    title = "Strokes Gained: Driving vs Scoring Average (fitted)",
+    x = "Strokes Gained Driving (Average)",
+    y = "Scoring Average",
+    caption = "Lower scoring average and higher strokes gained indicate better performance"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.title = element_text(size = 10),
+        plot.caption = element_text(size = 6))
+
+print(plot_driving_fitted)
+```
+
+### Assumptions checks
+
+The residuals and QQ plots for both the putting model can be found below:
+
+```{r, fig.height=3}
+#| echo: false
+plot(regp, which = 1)
+```
+```{r, fig.height=3}
+#| echo: false
+plot(regp, which = 2)
+```
+
+From the plots, it can be seen that the residuals, while heavily clustered, have similar variance. There's no 'cone shape', which is encouraging, although observation 246 appears to be a heavy outlier. The QQ plot is also relatively good, showing that the residuals are likely normal.
+
+Below are the residuals and QQ plots for the driving model:
+```{r, fig.height=3}
+#| echo: false
+plot(regd, which = 1)
+```
+```{r, fig.height=3}
+#| echo: false
+plot(regd, which = 2)
+```
+The driving residuals plot looks even better than the one for putting, with only a few outliers, but mostly constant variance. The QQ plot is again very good with almost all observations falling on the line, indicating passable error normality.
+
+## Conclusions
+
+From the SLR analysis of both models, it was found that both strokes gained metrics had a statistically significant negative relationship with average score. This was predicted, since doing better than the average amount of strokes on any golf course will translate to a lower (better) score. 
+
+The analysis also found that the model with average strokes gained putting as a predictor had an $R^2$ of 0.154 while the model with average strokes gained driving had an $R^2$ of 0.104. From the limited scope of this analysis, the data suggests that to answer the initial question, putting is a stronger linear predictor of PGA tournament success. 
+
+Although the suggestion that putting is a stronger predictor of score than driving can be derived from this analysis, it's important to note that both models represented less than a quarter of the overall variation in average score. This speaks to the complicated nature of scores even in something as seemingly straightforward as golf. There are likely better predictors for score, although they may or may not be linear. They not even be measurable aspects, such as the mental state and focus of a golfer within a high pressure tournament.
+
+While this study led to the interesting result that putting performance might be the more reliable path to success, driving and other aspects are fundamental in constituting a good score. The most successful golfers are those who strive to optimize all parts of their game.
 
 # References
