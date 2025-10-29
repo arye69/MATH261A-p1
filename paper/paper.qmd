@@ -25,7 +25,7 @@ PGA2022 <- read.csv(here("data", "PGA2022.csv"))
 
 # Introduction
 
-In the world of golf, the age old adage goes "Drive for show, putt for dough." It suggests that while long tee shots (drives) are impressive, it's a skilled short game (putting) that secures more match victories and consequently, more financial success. This is a long held belief in golf, understandably influencing which aspect people think of as more difficult or more profitable in some cases. PGA tour performance data can assist in substantiating such a claim.
+In the world of golf, the age old adage goes "Drive for show, putt for dough." It suggests that while long tee shots (drives) are impressive, it's a skilled short game (putting) that secures more match victories and consequently, more financial success. This is a long held belief in golf, understandably influencing which aspect people think of as more difficult or more profitable in some cases. Professional Golfers' Association (PGA) tour performance data can assist in substantiating such a claim [@PGAtour].
 
 While the relationship between certain golf skills is often discussed as tee time banter, this paper aims to address this area which is seldom backed by quantitative analysis. Using actual PGA metrics such as strokes gained, it can be determined whether power off the tee or expertise on the green is more strongly (linearly) associated with a professional golfers performance.
 
@@ -47,6 +47,10 @@ The following variables are relevant:
 * `puttsSG` (Strokes gained putting): A predictor that measures how many strokes a golfer gains or loses compared to the PGA average on the green. For example, if the average strokes required to make a putt on the green is 1.5 and a golfer makes it in one stroke, they've gained 0.5 strokes. A positive value indicates better than average putting ability.
 
 * `driveSG` (Strokes gained driving): A predictor that measures how many strokes a golfer gains or loses compared to the PGA average off-the-tee on all par 4s and 5s. The metric is calculated exactly how `puttsSG` is and accounts for both distance and accuracy. Again, a positive value indicates better than average driving ability.
+
+A key limitation to note is that the average score is prone to artificial inflation and deflation. Certain tournaments and courses are simply more difficult than others, and factors like changes in weather and conditions play a role as well. A player who plays in friendlier tournaments like The Sentry or The American Express, where scores are consistently under par, is likely to have a lower average score than a player who competes in difficult tournaments like the Honda Classic or Arnold Palmer Invitational, which are intensely technical.
+
+While the `avgScore` variable is affected by this course difference, both predictors (of the Strokes Gained metric) are not. This is due to the nature of the Strokes Gained metric, which is both a course and situation specific measurement. This is possible due to the massive amount of data collected by the PGA. For any given shot on any course within a PGA Tour sponsored tournament, they know the average number of shots it takes a pro golfer to get the ball in the hole from the *exact* location and situation. This makes both the `puttsSg` and `driveSG` variables reliable predictors due to their inherent capability to control for course difficulty [@strokes_gained].
 
 ### Data cleaning
 With over 1300 observations and only 280 unique golfers, it's clear that to measure any kind of linear relationship without introducing a false correlation effect, the data must be reduced down to a maximum of 280 observations, with only a single golfer per observation. To do this, the original dataframe was aggregated into only the averages of all pertinent metrics using R [@Base_R]. The result is a dataframe with the new variables `avg_Score` (average score, response), `avg_puttsSG` (average strokes gained putting, predictor), and `avg_driveSG` (average strokes gained off-the-tee, predictor). All of these are simply averages of the original stats by player, which reduces the bias of treating each tournament as an independent event. 
@@ -205,7 +209,125 @@ A logical extension to this work could be a multiple linear regression model usi
 
 # Results
 
-This section contains the results of the previously described analysis performed on each of the two proposed models. After analyzing both models, a comparison is performed to address the central research question.
+This section contains the results of the previously described analysis performed on each of the two proposed models. It starts with a check of all necessary assumptions for inference upon a linear regression model. After the assumptions check, both models are analyzed and a comparison is performed to address the central research question.
+
+### Assumptions
+
+The assumptions for performing valid inference on a Normal error regression model are as follows:
+
+1. Linearity: The relationship between variables must reasonably linear. The exploratory scatterplots show this is the case (see the **Data Cleaning** section).
+
+2. Independence: Since the data consists of one observation per professional golfer (see **Data Cleaning**), it is assumed that golfers' performances are independent of each other.
+
+3. Normality of errors: The residuals for both models should be approximately normally distributed. A QQ plot of the residuals will be examined further along in this section.
+
+4. Equal variances: The variance of residuals for both models should be relatively constant. Residual plots are examined further in this section.
+
+The residuals and QQ plots for both the putting model can be found below:
+
+```{r, fig.height=3}
+#| echo: false
+
+regp <- lm(avg_Score ~ avg_puttsSG, data = pga_agg)
+
+putting_diagnostics <- pga_agg %>%
+  mutate(
+    fitted = fitted(regp),
+    residuals = residuals(regp),
+    sqrt_abs_resid = sqrt(abs(residuals))
+  )
+
+# Plot 1: Residuals vs Fitted
+p1 <- ggplot(putting_diagnostics, aes(x = fitted, y = residuals)) +
+  geom_point(alpha = 0.6, color = "steelblue", size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  geom_smooth(se = F, color = "black", method = "loess", formula = y ~ x) +
+  labs(
+    title = "Putting Residuals vs Fitted Values",
+    x = "Fitted Values (Predicted Scoring Average)",
+    y = "Putting Residuals",
+    caption = "Zero reference line in red, smooth line in black"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.title = element_text(size = 10),
+        plot.caption = element_text(size = 6))
+p1
+
+```
+```{r, fig.height=3}
+#| echo: false
+p2 <- ggplot(putting_diagnostics, aes(sample = residuals)) +
+  stat_qq_line(color = "darkred", linewidth = 0.8, linetype = "dashed") +
+  stat_qq(color = "steelblue", alpha = 0.6, size = 2) +
+  labs(
+    title = "Normal Q-Q Plot of Putting Residuals",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles",
+    caption = "QQ line in red"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, hjust = 0.5),
+        axis.title = element_text(size = 10),
+        plot.caption = element_text(size = 6))
+p2
+```
+
+From the plots, it can be seen that the residuals, while heavily clustered, have similar variance. There's no 'cone shape', which is encouraging, although observation 246 appears to be a heavy outlier. The QQ plot is also relatively good, showing that the residuals are likely normal.
+
+Below are the residuals and QQ plots for the driving model:
+```{r, fig.height=3}
+#| echo: false
+
+regd <- lm(avg_Score ~ avg_driveSG, data = pga_agg)
+
+driving_diagnostics <- pga_agg %>%
+  mutate(
+    fitted = fitted(regd),
+    residuals = residuals(regd),
+    sqrt_abs_resid = sqrt(abs(residuals))
+  )
+
+# Plot 1: Residuals vs Fitted
+p1 <- ggplot(driving_diagnostics, aes(x = fitted, y = residuals)) +
+  geom_point(alpha = 0.6, color = "steelblue", size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  geom_smooth(se = F, color = "black", method = "loess", formula = y ~ x) +
+  labs(
+    title = "Driving Residuals vs Fitted Values",
+    x = "Fitted Values (Predicted Scoring Average)",
+    y = "Driving Residuals",
+    caption = "Zero reference line in red, smooth line in black"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.title = element_text(size = 10),
+        plot.caption = element_text(size = 6))
+p1
+
+```
+```{r, fig.height=3}
+#| echo: false
+p2 <- ggplot(driving_diagnostics, aes(sample = residuals)) +
+  stat_qq_line(color = "darkred", linewidth = 0.8, linetype = "dashed") +
+  stat_qq(color = "steelblue", alpha = 0.6, size = 2) +
+  labs(
+    title = "Normal Q-Q Plot of Driving Residuals",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles",
+    caption = "QQ line in red"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, hjust = 0.5),
+        axis.title = element_text(size = 10),
+        plot.caption = element_text(size = 6))
+p2
+```
+The driving residuals plot looks even better than the one for putting, with only a few outliers, but mostly constant variance. The QQ plot is again very good with almost all observations falling on the line, indicating passable error normality. 
+
+From the diagnostic plots, it can be concluded that the data for both models reasonably passes the final two assumptions (equal variances and error normality), validating the inferences in the following section.
 
 ## Model 1: Putting performance and scoring average
 
@@ -217,7 +339,6 @@ Fitting an SLR model between strokes gained putting and scoring average yields t
 #| message: false
 #| echo: false
 
-regp <- lm(avg_Score ~ avg_puttsSG, data = pga_agg)
 sump <- summary(regp)
 
 stargazer(regp,
@@ -227,7 +348,12 @@ stargazer(regp,
 
 ```
 
-As can be seen from the table, the regression revealed a statistically significant negative relationship between putting performance and average score with a $b_1$ p-value of `r sump$coefficients[8]`. The fitted regression equation is
+The hypotheses for the test on the slope coefficient $\beta_1$ were:
+
+* $H_0:\beta_1 = 0$ (There is no linear relationship between average strokes gained putting and average score)
+* $H_a:\beta_1 \not=0$ (There is a linear relationship between average strokes gained putting and average score)
+
+As can be seen from the table, the regression revealed a statistically significant negative relationship between putting performance and average score with a $b_1$ p-value of `r sump$coefficients[8]`. This p-value is for the t-test of the slope coefficient and is less than the common alpha level of 0.05, leading us to reject $H_0$. Find a discussion of the pertinent assumptions for such a test in the **Assumptions** section. The fitted regression equation is
 
 $$\text{avg\_Score}=70.377 - 0.612(\text{avg\_puttsSG})$$
 
@@ -248,7 +374,7 @@ plot_putting_fitted <- pga_agg |>
     title = "Strokes Gained: Putting vs Scoring Average (fitted)",
     x = "Strokes Gained Putting (Average)",
     y = "Scoring Average",
-    caption = "Lower scoring average and higher strokes gained indicate better performance"
+    caption = "Fitted regression line in red, 95% confidence bands in pink. Lower scoring average and higher strokes gained indicate better performance"
   ) +
   theme_bw() +
   theme(plot.title = element_text(size = 10, hjust = 0.5),
@@ -269,7 +395,6 @@ The SLR model of scoring average on strokes gained off-the-tee produced the foll
 #| message: false
 #| echo: false
 
-regd <- lm(avg_Score ~ avg_driveSG, data = pga_agg)
 sumd <- summary(regd)
 
 stargazer(regd,
@@ -278,7 +403,12 @@ stargazer(regd,
           header = FALSE)
 ```
 
-As expected, this regression also yielded a statistically signficant negative relationship between driving performance and scoring average. The p-value for the slope of this model is `r sumd$coefficients[8]` and the fitted regression equation is
+The hypotheses for the test on the slope coefficient $\beta_1$ were:
+
+* $H_0:\beta_1 = 0$ (There is no linear relationship between average strokes gained driving and average score)
+* $H_a:\beta_1 \not=0$ (There is a linear relationship between average strokes gained driving and average score)
+
+As expected, this regression also yielded a statistically signficant negative relationship between driving performance and scoring average. The p-value for the slope of this model is `r sumd$coefficients[8]`, leading us to reject the null hypothesis again at significance level 0.05. Find a discussion of the pertinent assumptions for the $\beta_1$ t-test in the **Assumptions** section. The fitted regression equation is
 
 $$\text{avg\_Score}=70.269 - 0.696(\text{avg\_driveSG})$$
 
@@ -299,7 +429,7 @@ plot_driving_fitted <- pga_agg |>
     title = "Strokes Gained: Driving vs Scoring Average (fitted)",
     x = "Strokes Gained Driving (Average)",
     y = "Scoring Average",
-    caption = "Lower scoring average and higher strokes gained indicate better performance"
+    caption = "Fitted regression line in red, 95% confidence bands in pink. Lower scoring average and higher strokes gained indicate better performance"
   ) +
   theme_bw() +
   theme(plot.title = element_text(size = 10, hjust = 0.5),
@@ -308,32 +438,6 @@ plot_driving_fitted <- pga_agg |>
 
 print(plot_driving_fitted)
 ```
-
-### Assumptions checks
-
-The residuals and QQ plots for both the putting model can be found below:
-
-```{r, fig.height=3}
-#| echo: false
-plot(regp, which = 1)
-```
-```{r, fig.height=3}
-#| echo: false
-plot(regp, which = 2)
-```
-
-From the plots, it can be seen that the residuals, while heavily clustered, have similar variance. There's no 'cone shape', which is encouraging, although observation 246 appears to be a heavy outlier. The QQ plot is also relatively good, showing that the residuals are likely normal.
-
-Below are the residuals and QQ plots for the driving model:
-```{r, fig.height=3}
-#| echo: false
-plot(regd, which = 1)
-```
-```{r, fig.height=3}
-#| echo: false
-plot(regd, which = 2)
-```
-The driving residuals plot looks even better than the one for putting, with only a few outliers, but mostly constant variance. The QQ plot is again very good with almost all observations falling on the line, indicating passable error normality.
 
 ## Conclusions
 
