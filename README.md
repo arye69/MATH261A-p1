@@ -7,7 +7,7 @@ Data used in this project is obtained from [SCORE Sports Data Repository](https:
 
 ## External Resources
 
-**Example statement:** The final report and code were written by Arye Santosh, but the following resources were used for preliminary research:
+The final report and code were written by Arye Santosh, but the following resources were used for preliminary research:
 
 * A [guide](https://shotscope.com/blog/practice-green/stats-and-data/what-is-strokes-gained/) to the Strokes Gained metric
 
