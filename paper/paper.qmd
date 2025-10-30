@@ -155,6 +155,7 @@ A potential limitation of the data is measurement error. While the PGA Tour's [S
 
 As stated earlier, the tournament independence biased was mitigated as best as possible by using an aggregation of player stats. However, it should be noted that aggregation removes the ability to model the effects of specific course and tournament conditions. Hence, conclusions about such effects won't be discussed in this analysis.
 
+Finally, the limitation of varying course difficulty with regards to `avgScore` is one that cannot be resolved without further data collection. The idea of gauging course difficulty is one that isn't feasible since while there are certainly objectively difficult courses, there's a subjective aspect involved as well. Since the response variable is biased in this sense, it introduces some additional noise, but it's reasonable to assume that the trends will be preserved. See the **Relevant Variables** section for more on course difficulty and its effects.
 
 # Methods
 
