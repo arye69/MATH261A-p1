@@ -1,5 +1,5 @@
-# MATH261A Project V1
-Project repository for MATH 261A (version 1).
+# MATH261A Project V3
+Project repository for MATH 261A (version 3).
 
 ## Data 
 
